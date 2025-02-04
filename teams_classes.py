@@ -6,7 +6,7 @@ class NewUser(BaseModel):
     name: constr(min_length=1)
     description: Optional[str] = ""
     location: Optional[str] = None
-    
+
     @field_validator('location')
     @classmethod
     def transform_empty_to_none(cls, value):
@@ -20,6 +20,7 @@ class NewUser(BaseModel):
         if value == None:
             return ""
         return value
+        
 
 class User(BaseModel):
     user_id: constr(min_length=1)

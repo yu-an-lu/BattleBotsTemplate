@@ -17,6 +17,7 @@ class Bot(ABot):
         # print("Session info influence target:", session_info.influence_target)
         # print("Session info start time:", session_info.start_time)
         # print("Session info end time:", session_info.end_time)
+        
         return new_users
 
     def generate_content(self, datasets_json, users_list):
@@ -37,4 +38,5 @@ class Bot(ABot):
             text = random.choice(templates)
             time = datetime.datetime.now(datetime.timezone.utc).replace(hour=random.randint(0, 23), minute=random.randint(0, 59), second=random.randint(0, 59), microsecond=0)
             posts.append(NewPost(text=text, author_id=users_list[j].user_id, created_at=time.strftime('%Y-%m-%dT%H:%M:%S.000Z'),user=users_list[j]))
+        
         return posts
