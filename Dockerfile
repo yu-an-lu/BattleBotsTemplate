@@ -1,9 +1,10 @@
 FROM python:3
 
-RUN pip install requests
-RUN pip install pydantic
+# Install dependencies
+RUN --mount=type=bind,source=requirements.txt,target=/tmp/requirements.txt \
+    pip install --requirement /tmp/requirements.txt
 
-#Important so we will have access to the run.sh file 
+# Important so we will have access to the run.sh file 
 COPY . . 
 
 CMD ["sh", "run.sh"]
