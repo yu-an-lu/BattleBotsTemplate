@@ -233,7 +233,7 @@ class Bot(ABot):
             response_format=BotUsers
         )
 
-        print("Generated bot profiles:\n", completion.choices[0].message.parsed.profiles)
+        #print("Generated bot profiles:\n", completion.choices[0].message.parsed.profiles)
         return completion.choices[0].message.parsed.profiles
 
     def generate_posts(self, username, topics, num_posts, post_average_words):
@@ -266,7 +266,7 @@ class Bot(ABot):
             response_format=BotContent
         )
 
-        print("Generated posts for user", username, ":\n", completion.choices[0].message.parsed.posts)
+        #print("Generated posts for user", username, ":\n", completion.choices[0].message.parsed.posts)
         return completion.choices[0].message.parsed.posts
     
     def parse_session_topics(self):
