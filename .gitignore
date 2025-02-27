@@ -63,3 +63,4 @@ docs/_build/
 session_data.json
 subsession_data.json
 bot_users_data.json
+user_characteristics_data.json
