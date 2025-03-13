@@ -59,8 +59,6 @@ coverage.xml
 # Sphinx documentation
 docs/_build/
 
-# Test files
-session_data.json
-subsession_data.json
-bot_users_data.json
-user_characteristics_data.json
+# Data files
+data/
+results/
