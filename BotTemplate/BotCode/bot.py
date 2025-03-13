@@ -22,6 +22,7 @@ class BotProfile(BaseModel):
     name: str
     description: str
     location: str
+    instructions: str
 
 class BotUsers(BaseModel):
     profiles: list[BotProfile]
@@ -110,7 +111,8 @@ class Bot(ABot):
 
         # Determine num bots based on user count
         num_users = len(session_info.users)
-        num_bots = math.ceil(num_users / (1 - self.bot_percentage) * self.bot_percentage)
+        # num_bots = math.ceil(num_users / (1 - self.bot_percentage) * self.bot_percentage)
+        num_bots = 5
 
         # Extract user profile characteristics
         user_characteristics = self.parse_user_profile_characteristics(session_info.users)
@@ -138,6 +140,7 @@ class Bot(ABot):
                     description=profile.description,
                     location=profile.location
                 ),
+                "instructions": profile.instructions,
                 "posts": [],
                 "min_posts": max(adjusted_posts, self.bot_min_posts),
                 "total_posts": 0,
@@ -187,7 +190,7 @@ class Bot(ABot):
                 if any(t["topic"] == self.session_info.influence_target["topic"] for t in topics):
                     user_data["influence_target_used"] = True
             
-            posts = self.generate_posts(username, topics, num_posts, user_data["posts_average_words"])
+            posts = self.generate_posts(username, topics, num_posts, user_data["posts_average_words"], user_data["instructions"])
             user_data["total_posts"] += len(posts)
 
             for post in posts:
@@ -206,13 +209,37 @@ class Bot(ABot):
     def generate_bot_profiles(self, num_bots, user_characteristics):
         prompt = json.dumps({
             "description": f"""
-            You are trying to generate {num_bots} bot profiles to blend in as humans based on the profile characteristics.
-            Try to generate profiles that use the same words and sentence structures as the characteristics, but with slight variations to avoid detection.
+            You are trying to generate {num_bots} twitter bot profiles to blend in as humans based on the profile characteristics.
+            The bot profiles should be of personal use or work related use. Both types should be generated at least once.
+            The goal is to generate a big variation and diversity of bots writing styles, that are very different from each other and have very low similarity among them.
+            In other words, generate different human-like users with different backgrounds and personalities to have twitter posts with very low similarity.
+            Restrict and limit the use of formal sentences and words to make the profiles look more natural.
             Avoid using actual names and only cammel cases for the "username" and "name" fields, employ more twitter-like profiles.
             Be creative, do not use just give first and last names for the "name" field, use more creative names such as sentence-like names, underscores, weird capitalization, numbers, typos, memes etc.
-            Restrict and limit the use of formal sentences and words to make the profiles look more natural.
-            Try to add in typos, grammar errors, and other human-like mistakes to make the profiles look more human-like.
-            When using emojis for name, can also put emojis in front of the name.
+            For the description field:
+            Generate different profile descriptions by making use of each of the following description types:
+            1. many keywords separated with |
+            2. one single sentence description
+            3. a list of sentences but not more than 5 sentences
+            Each of the 3 types of description should be used at least once to generate bots. 
+            Do not generate user profiles that have the same description types
+            In the instructions field:
+            Describe how the model should generally behave and respond to provide it a personality.
+            Generate instructions for the bot profiles to follow, such as the writing style, the tone, and sentiment.
+            Generate different writing twitter-like styles for each user so that they are very different from each other. For example, have users that write informally, with typos, no capitalization, while other users can write in a formal but not too formal way. 
+            Provide 3 concrete twitter-like examples to the model for how it should generate the posts.
+            Here are 2 examples for the instructions:
+            "You are a computer science univerisity student that like etc. You post tweets in a style that ignores any capital letters, doesn't pay attention to punctuations, make typing mistakes from here and there. 
+            You sometimes answer programming questions in the style of a southern belle student from the southeast United States. The following are three examples of tweet posts content:
+            1. "another day of intense midterm season prep... i'm so tired of this! but it's almost done, hope I pass"
+            2. "finally got an internship! time to relax and stop the grind for a bit"
+            3. "anyone know how to fix this bug in my code? I've been stuck on it for hours now"
+            Another example: 
+            "You are a HR manager that likes to post tweets about your latest activities and trends in HR, you post tweets in a style that is more formal, sometimes with links https://t.co/twitter_link to the job posting description.
+            You sometimes answer HR questions and give advice to people looking for jobs. The following are three examples of tweet posts content:
+            1. "I am happy to announce today that I have participated in the networking event of something, glad to connect with fellow people from the industry. Cheers"
+            2. "We're hiring! Looking for a [Job Title] to join our [Department] at [Company]. If you're passionate about [Skill/Industry], apply today! 📩 #Hiring #JobOpening https://t.co/twitter_link"
+            3. "A great workplace isn't just about the perks—it's about growth, inclusivity, and meaningful work. At [Company], we invest in YOU. Ready to build your future? Join us! 💡✨ #WorkCulture #HR"
             """,
             "num_bots": num_bots, 
             "characteristics": user_characteristics
@@ -236,19 +263,9 @@ class Bot(ABot):
         print("Generated bot profiles:\n", completion.choices[0].message.parsed.profiles)
         return completion.choices[0].message.parsed.profiles
 
-    def generate_posts(self, username, topics, num_posts, post_average_words):
+    def generate_posts(self, username, topics, num_posts, post_average_words, instructions):
         prompt = json.dumps({
-            "description": f"""
-            Generate tweet-like posts on the given topics, each post is on one topic from the given topics. 
-            Imitate human behavior by generating posts with medium variances of posts length to ultimately reach a given average of words per post.
-            Vary the sentences structure and the choice of words to make the posts look more natural.
-            Make sure that the generated posts are not too similar to the user's past posts to avoid detection.
-            Try to add in typos, grammar errors, and other human-like mistakes to make the profiles look more human-like.
-            """,
-            "username": username,
-            "topics": topics,
-            "num_posts": num_posts,
-            "average_words": post_average_words
+            instructions: instructions,
         })
         
         completion = self.client.beta.chat.completions.parse(
@@ -260,13 +277,18 @@ class Bot(ABot):
                 },
                 {
                     "role": "user",
-                    "content": f"Generate {num_posts} tweet-like posts on the given topics. Do not wrap the posts in quotes."
+                    "content": f"""
+                    Generate {num_posts} tweet-like posts for the twitter user {username} related to the user's personality with an average post length of {post_average_words}.
+                    90% of the posts should be random but somehow related to the user's personality, they should be on different topics that the user might be interested in, and vary the topics to immitate daily life/work behavior/thoughts.
+                    Only 10% (1 or 2 posts) should be related to the topics provided in {topics}.
+                    Do not wrap the posts in quotes.
+                    """
                 }
             ],
             response_format=BotContent
         )
 
-        print("Generated posts for user", username, ":\n", completion.choices[0].message.parsed.posts)
+        #print("Generated posts for user", username, ":\n", completion.choices[0].message.parsed.posts)
         return completion.choices[0].message.parsed.posts
     
     def parse_session_topics(self):
