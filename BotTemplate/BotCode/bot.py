@@ -69,7 +69,7 @@ class Bot(ABot):
 
     def create_user(self, session_info):
         self.session_info = session_info
-        self.get_session_info_json(session_info)
+        #self.get_session_info_json(session_info)
 
         self.subsession_num = len(self.session_info.sub_sessions_id)
 
@@ -112,11 +112,11 @@ class Bot(ABot):
             else:
                 raise ValueError(f"Unexpected distribution category: {profile.distribution}")
         
-        self.get_bot_users_info_json(self.bots, user_sample)
+        #self.get_bot_users_info_json(self.bots, user_sample)
         return new_users
 
     def generate_content(self, datasets_json, users_list):
-        self.get_sub_session_json(datasets_json)
+        #self.get_sub_session_json(datasets_json)
 
         subsession_posts = []
         generated_posts = {}
@@ -216,7 +216,7 @@ class Bot(ABot):
                 
                 generated_posts[username] = user_generated_posts
 
-        self.get_generated_posts_json(generated_posts, datasets_json.sub_session_id)
+        #self.get_generated_posts_json(generated_posts, datasets_json.sub_session_id)
 
         return subsession_posts
 
