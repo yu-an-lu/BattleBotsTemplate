@@ -198,17 +198,24 @@ class Bot(ABot):
                 
                 user_generated_posts = []
 
-                if (len(posts) != num_posts):
-                    raise ValueError(f"Number of generated posts ({len(posts)}) does not match the expected number of posts ({num_posts}) for user {username} in subsession {datasets_json.sub_session_id}")
+                # if (len(posts) != num_posts):
+                #     raise ValueError(f"Number of generated posts ({len(posts)}) does not match the expected number of posts ({num_posts}) for user {username} in subsession {datasets_json.sub_session_id}")
 
-                for i in range(num_posts):
-                    time = timestamps[i]
+                for i in range(len(posts)):
+                    if i < len(timestamps):
+                        time = timestamps[i]
+                    else:
+                        time = start_time + datetime.timedelta(seconds=random.uniform(0, (end_time - start_time).total_seconds()))
+                        time = time.strftime('%Y-%m-%dT%H:%M:%S.000Z')
+                    
                     text = posts[i].text.replace("\x00", "")    # remove null bytes
+
                     new_post = NewPost(
                         text=text,
                         author_id=user_id,
                         created_at=time
                     )
+                    
                     subsession_posts.append(new_post)
                     user_data["posts"].append(new_post)
 
