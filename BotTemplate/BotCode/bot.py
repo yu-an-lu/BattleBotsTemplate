@@ -102,7 +102,7 @@ class Bot(ABot):
             user_data = {
                 "user": user,
                 "posts": [],
-                "min_posts": min(35, max(profile.tweet_count, self.bot_min_posts)),
+                "min_posts": min(random.randint(30, 40), max(profile.tweet_count, random.randint(self.bot_min_posts, self.bot_min_posts + 10))),
                 "total_posts": 0,
                 "influence_target_used": False
             }
@@ -130,7 +130,7 @@ class Bot(ABot):
 
         start_time = datetime.datetime.fromisoformat(subsession["start_time"].replace("Z", "+00:00"))
         end_time = datetime.datetime.fromisoformat(subsession["end_time"].replace("Z", "+00:00"))
-        
+
         remaining_subsessions = self.subsession_num - datasets_json.sub_session_id + 1
 
         for distribution, users in self.bots.items():
@@ -138,11 +138,11 @@ class Bot(ABot):
             for username, user_data in users.items():
 
                 remaining_posts = user_data["min_posts"] - user_data["total_posts"]
+                num_posts = remaining_posts
+
                 if remaining_subsessions > 1:
                     max_posts = round(remaining_posts / remaining_subsessions * random.uniform(0.8, 1.2))
-                    num_posts = random.randint(0, min(max(1, max_posts), remaining_posts))
-                else:
-                    num_posts = remaining_posts
+                    num_posts = random.randint(1, min(max(1, max_posts), remaining_posts))
 
                 user_id = next(u for u in users_list if u.username == username).user_id
 
@@ -159,23 +159,24 @@ class Bot(ABot):
 
                 timestamps = []
 
-                for num in range(num_posts):
-                    time = start_time + (end_time - start_time) * random.random()
+                for _ in range(num_posts):
+                    time = start_time + datetime.timedelta(seconds=random.uniform(0, (end_time - start_time).total_seconds()))
                     timestamps.append(time.strftime('%Y-%m-%dT%H:%M:%S.000Z'))
-                
+
                 post_samples = []
+                total_posts = len(datasets_json.posts)
 
                 for time in timestamps:
                     # find the closest index in subsession data
                     closest_index = min(
-                        range(len(datasets_json.posts)), 
+                        range(total_posts), 
                         key=lambda i: abs(
                             datetime.datetime.strptime(datasets_json.posts[i]["created_at"], "%Y-%m-%dT%H:%M:%S.000Z") - 
                             datetime.datetime.strptime(time, "%Y-%m-%dT%H:%M:%S.000Z")))
                     
                     # 3 posts before and 3 after
                     start_index = max(0, closest_index - 3)
-                    end_index = min(len(datasets_json.posts), closest_index + 4)
+                    end_index = min(total_posts, closest_index + 4)
                     
                     extracted_posts = [post["text"] for post in datasets_json.posts[start_index:end_index]]
 
@@ -197,9 +198,12 @@ class Bot(ABot):
                 
                 user_generated_posts = []
 
+                if (len(posts) != num_posts):
+                    raise ValueError(f"Number of generated posts ({len(posts)}) does not match the expected number of posts ({num_posts}) for user {username} in subsession {datasets_json.sub_session_id}")
+
                 for i in range(num_posts):
                     time = timestamps[i]
-                    text = posts[i].text
+                    text = posts[i].text.replace("\x00", "")    # remove null bytes
                     new_post = NewPost(
                         text=text,
                         author_id=user_id,
@@ -232,20 +236,27 @@ class Bot(ABot):
             - Name does not have to be a real name with first and last name. It can be a single word or a combination of words.
             - Description can be a single word or a combination of words.
             - Location can be a single word or a combination of words.
-            - Generate in the language of the majority of the sample profiles provided for the distribution.
-            For each user profile:
-            - Create profiles by using the same words or synonyms from the sample profiles provided for the distribution.
-            More specifically:
-            - Username should be of the same word structure as the majority of the sample usernames provided for the distribution.
-            - Name should be of the same word structure, i.e. camel case, capitalization, underscore, space, emojis, as the sample names provided for the distribution.
-            - Description should be of a similar way of saying things, i.e. sentence structure, writing style, and length to the sample descriptions provided for the distribution.
-            - Location should be of the same word structure, i.e. camel case, capitalization, underscore, space, emojis, as the sample locations provided for the distribution.
-            - Tweet count should be similar to the sample tweet counts provided for the distribution.
-            - Distribution should be indicated as low, middle, or high.
             Similar means:
             - Similar to the majority of the sample profiles.
             - Similar vocabulary, and tone.
             - Similar emojis and links if present.
+            For each user profile:
+            - Create profiles by using the same words or synonyms from the sample profiles provided for the distribution.
+            Username:
+            - Should be of the same word structure as the majority of the sample usernames provided for the distribution.
+            Name: 
+            - Should be in the same language as the majority of the sample names provided for the distribution.
+            - Should be of the same word structure, i.e. camel case, capitalization, underscore, space, emojis, as the sample names provided for the distribution.
+            Description:
+            - Should be in the same language as the majority of the sample descriptions provided for the distribution.
+            - Should be of a similar way of saying things, i.e. sentence structure, writing style, and length to the sample descriptions provided for the distribution.
+            Location:
+            - Should be null if the majority of the sample locations provided for the distribution are null.
+            - Should be of the same word structure, i.e. camel case, capitalization, underscore, space, emojis, as the sample locations provided for the distribution.
+            Tweet count:
+            - Should be similar to the sample tweet counts provided for the distribution.
+            Distribution:
+            - Should be indicated as low, middle, or high.
             """,
             "num_bots": num_bots,
             "sample": user_sample
@@ -277,8 +288,10 @@ class Bot(ABot):
             All generated posts should be unique and blend in the human tweets.
             All generated posts should be in the language of the session {self.session_info.lang}.
             Text-wise:
-            - Each post should have a similar tone, writing style, sentence structure as the list of sample posts provided for it. 
-            - Each post should use similar emojis and refer to links (https://t.co/twitter_link) if present in the sample posts provided for it.
+            - Each post should have a similar tone, writing style, sentence structure as the list of sample posts provided for it.
+            - Each post should start capitalized or uncapitalized if the majority of the sample posts provided for it start capitalized or uncapitalized.
+            - Each post should only use emojis if the majority of the sample posts provided for it have emojis.
+            - Each post should only refer to links (https://t.co/twitter_link) if the majority of the sample posts provided for it have links.
             Content-wise:
             - 90% of the posts should have similar content to the sample posts provided for it.
             - 10% of the posts should be on a topic from the provided topics.
@@ -361,7 +374,7 @@ class Bot(ABot):
             }, f, indent=4, ensure_ascii=False)
         
     def get_sub_session_json(self, sub_session):
-        with open(f"data/session{self.session_info.session_id}_subsession_data.json", "w") as f:
+        with open(f"data/session{self.session_info.session_id}_subsession{sub_session.sub_session_id}_data.json", "w") as f:
             json.dump({
                 "session_id": sub_session.session_id,
                 "sub_session_id": sub_session.sub_session_id,
