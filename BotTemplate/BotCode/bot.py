@@ -33,7 +33,11 @@ class Bot(ABot):
     def __init__(self, model="gpt-4o-2024-08-06"):
         self.bot_min_posts = 10
         self.bot_percentage = 0.02
-        self.new_users = {}
+        self.bots = {
+            "low": {},
+            "middle": {},
+            "high": {}
+        }
 
         load_dotenv()
         self.api_key = os.getenv("ENV_VAR1")
@@ -81,12 +85,6 @@ class Bot(ABot):
         print("Generated number of bots:", len(user_profiles))
         
         self.topics = self.parse_session_topics()
-
-        self.bots = {
-            "low": {},
-            "middle": {},
-            "high": {}
-        }
 
         new_users = []
 
@@ -187,7 +185,7 @@ class Bot(ABot):
                     batch_size = min(5, num_posts - i)
 
                     batch_generated_posts = self.generate_posts(
-                        username,
+                        user_data["user"],
                         topics,
                         batch_size,
                         post_samples[i : i + batch_size]
@@ -287,10 +285,10 @@ class Bot(ABot):
         #print("Generated bot profiles:\n", completion.choices[0].message.parsed.profiles)
         return completion.choices[0].message.parsed.profiles
 
-    def generate_posts(self, username, topics, num_posts, sample_posts):
+    def generate_posts(self, user, topics, num_posts, sample_posts):
         prompt = json.dumps({
             "instructions": f"""
-            You are trying to generate {num_posts} tweet-like posts for the twitter user {username}.
+            You are trying to generate {num_posts} tweet-like posts for the twitter user {user.username}.
             You are provided with a list of sample posts for each post to generate.
             All generated posts should be unique and blend in the human tweets.
             All generated posts should be in the language of the session {self.session_info.lang}.
@@ -300,7 +298,7 @@ class Bot(ABot):
             - Each post should only use emojis if the majority of the sample posts provided for it have emojis.
             - Each post should only refer to links (https://t.co/twitter_link) if the majority of the sample posts provided for it have links.
             Content-wise:
-            - 90% of the posts should have similar content to the sample posts provided for it.
+            - 90% of the posts should have the same content as a random sample post provided for it, but adjusted to the personality of the user.
             - 10% of the posts should be on a topic from the provided topics.
             Similar means:
             - Similar to the majority of the sample posts.
@@ -312,6 +310,11 @@ class Bot(ABot):
             Do not wrap the posts in quotes.
             """,
             "language": self.session_info.lang,
+            "user": user.username,
+            "user_name": user.name,
+            "user_description": user.description,
+            "user_location": user.location, 
+            "num_posts": num_posts,
             "topics": topics,
             "sample_posts": sample_posts
         })
@@ -326,7 +329,7 @@ class Bot(ABot):
                 {
                     "role": "user",
                     "content": f"""
-                    Generate {num_posts} tweet-like posts for the twitter user {username}.
+                    Generate {num_posts} tweet-like posts for the twitter user {user.username}.
                     """
                 }
             ],
