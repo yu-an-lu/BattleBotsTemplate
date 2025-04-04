@@ -256,9 +256,12 @@ class Bot(ABot):
             - Create profiles by using the same words or synonyms from the sample profiles provided for the distribution.
             Username:
             - Should be of the same word structure as the majority of the sample usernames provided for the distribution.
+            - Minimum length of 1 character
             Name: 
             - Should be in the same language as the majority of the sample names provided for the distribution.
             - Should be of the same word structure, i.e. camel case, capitalization, underscore, space, emojis, as the sample names provided for the distribution.
+            - Name has to contain letters
+            - Minimum length of 1 character
             Description:
             - Should be in the same language as the majority of the sample descriptions provided for the distribution.
             - Should be of a similar way of saying things, i.e. sentence structure, writing style, and length to the sample descriptions provided for the distribution.
